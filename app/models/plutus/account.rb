@@ -116,53 +116,61 @@ module Plutus
       debit_amounts.balance(options)
     end
 
-    # This class method is used to return the balance of all accounts
-    # for a given class and is intended for use only on account subclasses.
-    #
-    # Contra accounts are automatically subtracted from the balance.
-    #
-    # Takes an optional hash specifying :from_date and :to_date for calculating balances during periods.
-    # :from_date and :to_date may be strings of the form "yyyy-mm-dd" or Ruby Date objects
-    #
-    # @example
-    #   >> Plutus::Liability.balance({:from_date => "2000-01-01", :to_date => Date.today})
-    #   => #<BigDecimal:103259bb8,'0.1E4',4(12)>
-    #
-    # @example
-    #   >> Plutus::Liability.balance
-    #   => #<BigDecimal:1030fcc98,'0.82875E5',8(20)>
-    #
-    # @return [BigDecimal] The decimal value balance
-    def self.balance(options={})
-      if self.new.class == Plutus::Account
-        raise(NoMethodError, "undefined method 'balance'")
-      else
-        accounts_balance = BigDecimal.new('0')
-        accounts = self.all
-        accounts.each do |account|
-          if account.contra
-            accounts_balance -= account.balance(options)
-          else
-            accounts_balance += account.balance(options)
+    class << self
+      # This class method is used to return the balance of all accounts
+      # for a given class and is intended for use only on account subclasses.
+      #
+      # Contra accounts are automatically subtracted from the balance.
+      #
+      # Takes an optional hash specifying :from_date and :to_date for calculating balances during periods.
+      # :from_date and :to_date may be strings of the form "yyyy-mm-dd" or Ruby Date objects
+      #
+      # @example
+      #   >> Plutus::Liability.balance({:from_date => "2000-01-01", :to_date => Date.today})
+      #   => #<BigDecimal:103259bb8,'0.1E4',4(12)>
+      #
+      # @example
+      #   >> Plutus::Liability.balance
+      #   => #<BigDecimal:1030fcc98,'0.82875E5',8(20)>
+      #
+      # @return [BigDecimal] The decimal value balance
+      def balance(options={})
+        if account_class?
+          raise(NoMethodError, "undefined method 'balance'")
+        else
+          accounts_balance = BigDecimal.new('0')
+          accounts = self.all
+          accounts.each do |account|
+            if account.contra
+              accounts_balance -= account.balance(options)
+            else
+              accounts_balance += account.balance(options)
+            end
           end
+          accounts_balance
         end
-        accounts_balance
       end
-    end
 
-    # The trial balance of all accounts in the system. This should always equal zero,
-    # otherwise there is an error in the system.
-    #
-    # @example
-    #   >> Account.trial_balance.to_i
-    #   => 0
-    #
-    # @return [BigDecimal] The decimal value balance of all accounts
-    def self.trial_balance
-      if self.new.class == Plutus::Account
-        Plutus::Asset.balance - (Plutus::Liability.balance + Plutus::Equity.balance + Plutus::Revenue.balance - Plutus::Expense.balance)
-      else
-        raise(NoMethodError, "undefined method 'trial_balance'")
+      # The trial balance of all accounts in the system. This should always equal zero,
+      # otherwise there is an error in the system.
+      #
+      # @example
+      #   >> Account.trial_balance.to_i
+      #   => 0
+      #
+      # @return [BigDecimal] The decimal value balance of all accounts
+      def trial_balance
+        if account_class?
+          Plutus::Asset.balance - (Plutus::Liability.balance + Plutus::Equity.balance + Plutus::Revenue.balance - Plutus::Expense.balance)
+        else
+          raise(NoMethodError, "undefined method 'trial_balance'")
+        end
+      end
+
+      private
+
+      def account_class?
+        self.new.class == Plutus::Account
       end
     end
 
